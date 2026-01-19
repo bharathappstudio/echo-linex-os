@@ -28,18 +28,9 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
 
-                /* ---------- JavaFX (WebView + Swing) ---------- */
+                /* ---------- JavaFX (Linux Fixed) ---------- */
                 val javafxVersion = "17.0.10"
-
-                val osName = System.getProperty("os.name").lowercase()
-                val osArch = System.getProperty("os.arch").lowercase()
-
-                val targetOs = when {
-                    osName.contains("win") -> "win"
-                    osName.contains("mac") && (osArch.contains("aarch64") || osArch.contains("arm")) -> "mac-aarch64"
-                    osName.contains("mac") -> "mac"
-                    else -> "linux"
-                }
+                val targetOs = "linux" // Strictly Linux
 
                 implementation("org.openjfx:javafx-base:$javafxVersion:$targetOs")
                 implementation("org.openjfx:javafx-graphics:$javafxVersion:$targetOs")
@@ -60,17 +51,22 @@ compose.desktop {
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/java.awt.event=ALL-UNNAMED",
             "--add-opens=java.base/java.lang=ALL-UNNAMED",
-            "-Dprism.order=sw"
+            "-Dprism.order=sw" // Software rendering for better compatibility on Linux
         )
 
         nativeDistributions {
             targetFormats(
-                TargetFormat.Dmg,
-                TargetFormat.Msi,
-                TargetFormat.Deb
+                TargetFormat.Deb, // Debian/Ubuntu
+                TargetFormat.Rpm  // Fedora/RedHat
             )
             packageName = "Echo"
             packageVersion = "1.0.0"
+
+            linux {
+                shortcut = true
+                appCategory = "Utility"
+                menuGroup = "EchoStudio"
+            }
         }
     }
 }
