@@ -149,33 +149,31 @@ fun TitleBarButton(text: String, theme: ThemePalette, isClose: Boolean = false, 
 @Composable
 fun App(theme: ThemePalette) {
     val initialSession = remember { SessionManager.loadSession() }
-    var currentScreen by remember { mutableStateOf("MAIN") } // "MAIN" or "USER_ACTIVITY"
+    var currentScreen by remember { mutableStateOf("MAIN") }
 
-    // User Data States
     var userName by remember { mutableStateOf<String?>(initialSession?.first) }
     var userEmail by remember { mutableStateOf<String?>(initialSession?.second) }
     var userPhotoUrl by remember { mutableStateOf<String?>(initialSession?.third) }
     var loggedIn by remember { mutableStateOf(initialSession != null) }
 
-    AnimatedContent(targetState = currentScreen) { screen ->
+    AnimatedContent(
+        targetState = currentScreen,
+        transitionSpec = { fadeIn() togetherWith fadeOut() }
+    ) { screen ->
         when (screen) {
             "MAIN" -> MainUI(theme, loggedIn, userName, userEmail, userPhotoUrl,
-                onLoginSuccess = { name, email, photo ->
-                    userName = name; userEmail = email; userPhotoUrl = photo; loggedIn = true
-                },
-                onLogout = {
-                    loggedIn = false; userName = null; userEmail = null; currentScreen = "MAIN"
-                },
+                onLoginSuccess = { n, e, p -> userName = n; userEmail = e; userPhotoUrl = p; loggedIn = true },
+                onLogout = { loggedIn = false; userName = null; userEmail = null; currentScreen = "MAIN" },
                 onNextClick = { currentScreen = "USER_ACTIVITY" }
             )
             "USER_ACTIVITY" -> UserActivityUI(theme, userName) {
-                currentScreen = "MAIN" // Back to main
+                currentScreen = "MAIN"
             }
         }
     }
 }
 
-/* ---------- MAIN UI (Login + Profile + Web) ---------- */
+/* ---------- MAIN UI ---------- */
 @Composable
 fun MainUI(
     theme: ThemePalette,
@@ -189,11 +187,10 @@ fun MainUI(
 ) {
     var webUrl by remember { mutableStateOf("https://bharathappstudio.github.io/Echo-Web/") }
     var emailInput by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
 
+    // Auth logic placeholder
     val authClient = remember {
         GoogleAuthClient { success, n, e, p ->
-            isLoading = false
             if (success) {
                 onLoginSuccess(n, e, p)
                 SessionManager.saveSession(n, e, p)
@@ -202,6 +199,7 @@ fun MainUI(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(theme.bg)) {
+        // Grid background effect
         Canvas(modifier = Modifier.fillMaxSize()) {
             val gap = 40.dp.toPx()
             for (x in 0..size.width.toInt() step gap.toInt()) {
@@ -212,11 +210,12 @@ fun MainUI(
         }
 
         Row(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            // LEFT PANEL: Login or Profile
             Box(modifier = Modifier.width(380.dp).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(theme.surface).border(1.dp, theme.border, RoundedCornerShape(16.dp)).padding(32.dp)) {
                 Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                     if (!loggedIn) {
-                        LoginView(theme, emailInput, { emailInput = it }, isLoading,
-                            onGoogle = { isLoading = true; authClient.signIn() },
+                        LoginView(theme, emailInput, { emailInput = it },
+                            onGoogle = { authClient.signIn() },
                             onGithub = { webUrl = "https://echob.framer.ai" },
                             onContinue = {
                                 if (emailInput.isNotBlank()) {
@@ -238,7 +237,10 @@ fun MainUI(
                     }
                 }
             }
+
             Spacer(Modifier.width(20.dp))
+
+            // RIGHT PANEL: WebView (This only exists inside MainUI now)
             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, theme.border, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(theme.surface)) {
                 DesktopWebView(webUrl)
             }
@@ -248,27 +250,23 @@ fun MainUI(
 
 /* ---------- VIEWS ---------- */
 @Composable
-fun LoginView(theme: ThemePalette, email: String, onEmailChange: (String) -> Unit, loading: Boolean, onGoogle: () -> Unit, onGithub: () -> Unit, onContinue: () -> Unit) {
+fun LoginView(theme: ThemePalette, email: String, onEmailChange: (String) -> Unit, onGoogle: () -> Unit, onGithub: () -> Unit, onContinue: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("ECHO", style = TextStyle(fontSize = 42.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = 8.sp, color = theme.text))
         Text("V.01 CORE", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = theme.textSecondary)
         Spacer(Modifier.height(40.dp))
-        if (loading) {
-            CircularProgressIndicator(color = theme.text, strokeWidth = 2.dp)
-        } else {
-            NothingButton("Continue With Google", false, theme, onGoogle)
-            Spacer(Modifier.height(12.dp))
-            NothingButton("echo-studio-13", false, theme, onGithub)
-            Spacer(Modifier.height(24.dp))
-            OutlinedTextField(
-                value = email, onValueChange = onEmailChange,
-                placeholder = { Text("EMAIL_ADDRESS", color = theme.textSecondary, fontSize = 12.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = theme.text, unfocusedTextColor = theme.text, focusedBorderColor = theme.text, unfocusedBorderColor = theme.border)
-            )
-            Spacer(Modifier.height(16.dp))
-            NothingButton("ACCESS_CORE", true, theme, onContinue)
-        }
+        NothingButton("Continue With Google", false, theme, onGoogle)
+        Spacer(Modifier.height(12.dp))
+        NothingButton("echo-studio-13", false, theme, onGithub)
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = email, onValueChange = onEmailChange,
+            placeholder = { Text("EMAIL_ADDRESS", color = theme.textSecondary, fontSize = 12.sp) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = theme.text, unfocusedTextColor = theme.text, focusedBorderColor = theme.text, unfocusedBorderColor = theme.border)
+        )
+        Spacer(Modifier.height(16.dp))
+        NothingButton("ACCESS_CORE", true, theme, onContinue)
     }
 }
 
@@ -303,7 +301,6 @@ fun ProfileView(theme: ThemePalette, name: String?, email: String?, photoUrl: St
             }
         }
         Spacer(Modifier.height(30.dp))
-        // ✅ NEXT BUTTON ADDED TO GO TO USER_ACTIVITY
         NothingButton("NEXT", true, theme, onNext)
     }
 }
@@ -315,18 +312,15 @@ fun NothingButton(text: String, isPrimary: Boolean, theme: ThemePalette, onClick
     }
 }
 
-/* ---------- WEBVIEW ---------- */
 @Composable
 fun DesktopWebView(url: String) {
     val jfxPanel = remember { JFXPanel() }
-    var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    LaunchedEffect(url) { Platform.runLater { webViewInstance?.engine?.load(url) } }
+    LaunchedEffect(url) {} // Trigger for future needs
     SwingPanel(modifier = Modifier.fillMaxSize(), factory = {
         JPanel(BorderLayout()).apply {
             add(jfxPanel, BorderLayout.CENTER)
             Platform.runLater {
                 val wv = WebView()
-                webViewInstance = wv
                 jfxPanel.scene = Scene(wv)
                 wv.engine.load(url)
             }
