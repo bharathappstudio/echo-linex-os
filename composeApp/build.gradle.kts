@@ -17,6 +17,10 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
 
+                // --- ADDED FOR UI ICONS AND RESOURCES ---
+                implementation(compose.materialIconsExtended)
+                implementation(compose.components.resources)
+
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
                 implementation("org.json:json:20240303")
                 implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -30,7 +34,7 @@ kotlin {
 
                 /* ---------- JavaFX (Linux Fixed) ---------- */
                 val javafxVersion = "17.0.10"
-                val targetOs = "linux" // Strictly Linux
+                val targetOs = "linux"
 
                 implementation("org.openjfx:javafx-base:$javafxVersion:$targetOs")
                 implementation("org.openjfx:javafx-graphics:$javafxVersion:$targetOs")
@@ -51,14 +55,11 @@ compose.desktop {
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/java.awt.event=ALL-UNNAMED",
             "--add-opens=java.base/java.lang=ALL-UNNAMED",
-            "-Dprism.order=sw" // Software rendering for better compatibility on Linux
+            "-Dprism.order=sw"
         )
 
         nativeDistributions {
-            targetFormats(
-                TargetFormat.Deb, // Debian/Ubuntu
-                TargetFormat.Rpm  // Fedora/RedHat
-            )
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "Echo"
             packageVersion = "1.0.0"
 

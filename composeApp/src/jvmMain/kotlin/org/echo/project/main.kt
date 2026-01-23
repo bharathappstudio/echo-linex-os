@@ -146,34 +146,67 @@ fun TitleBarButton(text: String, theme: ThemePalette, isClose: Boolean = false, 
 }
 
 /* ---------- APP NAVIGATION ---------- */
+/* ... Keep all your imports and Theme/Session helpers the same ... */
+
 @Composable
 fun App(theme: ThemePalette) {
     val initialSession = remember { SessionManager.loadSession() }
     var currentScreen by remember { mutableStateOf("MAIN") }
 
+    // --- State for Auth and Navigation ---
     var userName by remember { mutableStateOf<String?>(initialSession?.first) }
     var userEmail by remember { mutableStateOf<String?>(initialSession?.second) }
     var userPhotoUrl by remember { mutableStateOf<String?>(initialSession?.third) }
+    var googleAccessToken by remember { mutableStateOf<String?>(null) } // New State
     var loggedIn by remember { mutableStateOf(initialSession != null) }
+
+    // Initialize AuthClient once at the App level
+    val googleAuthClient = remember {
+        GoogleAuthClient { success, n, e, p, token -> // Updated to receive token
+            if (success) {
+                userName = n
+                userEmail = e
+                userPhotoUrl = p
+                googleAccessToken = token
+                loggedIn = true
+                SessionManager.saveSession(n, e, p)
+            }
+        }
+    }
 
     AnimatedContent(
         targetState = currentScreen,
         transitionSpec = { fadeIn() togetherWith fadeOut() }
     ) { screen ->
         when (screen) {
-            "MAIN" -> MainUI(theme, loggedIn, userName, userEmail, userPhotoUrl,
-                onLoginSuccess = { n, e, p -> userName = n; userEmail = e; userPhotoUrl = p; loggedIn = true },
-                onLogout = { loggedIn = false; userName = null; userEmail = null; currentScreen = "MAIN" },
+            "MAIN" -> MainUI(
+                theme = theme,
+                loggedIn = loggedIn,
+                name = userName,
+                email = userEmail,
+                photo = userPhotoUrl,
+                authClient = googleAuthClient, // Pass AuthClient
+                onLoginSuccess = { n, e, p -> /* State handled by authClient callback */ },
+                onLogout = {
+                    loggedIn = false
+                    userName = null
+                    googleAccessToken = null
+                    currentScreen = "MAIN"
+                },
                 onNextClick = { currentScreen = "USER_ACTIVITY" }
             )
-            "USER_ACTIVITY" -> UserActivityUI(theme, userName) {
-                currentScreen = "MAIN"
-            }
+
+            "USER_ACTIVITY" -> UserActivityUI(
+                userName = userName,
+                accessToken = googleAccessToken, // Added this
+                authClient = googleAuthClient,    // Added this
+                onBack = { currentScreen = "MAIN" }
+            )
         }
     }
 }
 
-/* ---------- MAIN UI ---------- */
+/* ---------- MAIN UI (Updated Signature) ---------- */
 @Composable
 fun MainUI(
     theme: ThemePalette,
@@ -181,6 +214,7 @@ fun MainUI(
     name: String?,
     email: String?,
     photo: String?,
+    authClient: GoogleAuthClient, // New Argument
     onLoginSuccess: (String, String, String?) -> Unit,
     onLogout: () -> Unit,
     onNextClick: () -> Unit
@@ -188,18 +222,8 @@ fun MainUI(
     var webUrl by remember { mutableStateOf("https://bharathappstudio.github.io/Echo-Web/") }
     var emailInput by remember { mutableStateOf("") }
 
-    // Auth logic placeholder
-    val authClient = remember {
-        GoogleAuthClient { success, n, e, p ->
-            if (success) {
-                onLoginSuccess(n, e, p)
-                SessionManager.saveSession(n, e, p)
-            }
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize().background(theme.bg)) {
-        // Grid background effect
+        // Grid background effect (Same as your code)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val gap = 40.dp.toPx()
             for (x in 0..size.width.toInt() step gap.toInt()) {
@@ -210,12 +234,11 @@ fun MainUI(
         }
 
         Row(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-            // LEFT PANEL: Login or Profile
             Box(modifier = Modifier.width(380.dp).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(theme.surface).border(1.dp, theme.border, RoundedCornerShape(16.dp)).padding(32.dp)) {
                 Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                     if (!loggedIn) {
                         LoginView(theme, emailInput, { emailInput = it },
-                            onGoogle = { authClient.signIn() },
+                            onGoogle = { authClient.signIn() }, // Uses the passed client
                             onGithub = { webUrl = "https://echob.framer.ai" },
                             onContinue = {
                                 if (emailInput.isNotBlank()) {
@@ -237,16 +260,15 @@ fun MainUI(
                     }
                 }
             }
-
             Spacer(Modifier.width(20.dp))
-
-            // RIGHT PANEL: WebView (This only exists inside MainUI now)
             Box(modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, theme.border, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(theme.surface)) {
                 DesktopWebView(webUrl)
             }
         }
     }
 }
+
+/* ... Keep all your helper views (LoginView, ProfileView, NothingButton, etc.) exactly as they were ... */
 
 /* ---------- VIEWS ---------- */
 @Composable
