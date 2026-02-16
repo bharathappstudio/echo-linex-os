@@ -95,34 +95,7 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                     color = Color(0xFFFFF7ED).copy(alpha = 0.95f),
                     border = BorderStroke(1.dp, Color(0xFFFFEDD5))
                 ) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = orangeBrand, shape = RoundedCornerShape(4.dp)) {
-                            Text("NEW", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text("Nano Banana Pro is 50% off. ", fontSize = 12.sp, color = textMain)
-                        Text("Upgrade →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = orangeBrand)
-                    }
                 }
-            }
-
-            /* HERO HEADER */
-            if (messages.isEmpty()) {
-                Spacer(Modifier.height(60.dp))
-                Text(
-                    text = "Hello, ${userName ?: "Designer"}",
-                    fontSize = 16.sp,
-                    color = orangeBrand,
-                    fontWeight = FontWeight.Medium
-                )
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Design is easier with ", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textMain)
-                    Box(modifier = Modifier.size(32.dp).background(Color.Black, CircleShape), contentAlignment = Alignment.Center) {
-                        Text("L", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                    }
-                    Text(" Lovart", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textMain)
-                }
-                Text("The design agent that gets you and gets the job done", color = textMuted, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
             }
 
             /* CHAT AREA */
