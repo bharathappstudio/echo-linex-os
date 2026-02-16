@@ -16,8 +16,6 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.ui)
-
-                // --- ADDED FOR UI ICONS AND RESOURCES ---
                 implementation(compose.materialIconsExtended)
                 implementation(compose.components.resources)
 
@@ -32,9 +30,9 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
 
-                /* ---------- JavaFX (Linux Fixed) ---------- */
+                /* ---------- JavaFX (Strict Linux Only) ---------- */
                 val javafxVersion = "17.0.10"
-                val targetOs = "linux"
+                val targetOs = "linux" // Locked to Linux
 
                 implementation("org.openjfx:javafx-base:$javafxVersion:$targetOs")
                 implementation("org.openjfx:javafx-graphics:$javafxVersion:$targetOs")
@@ -51,22 +49,28 @@ compose.desktop {
     application {
         mainClass = "org.echo.project.MainKt"
 
+        // Linux-specific JVM arguments for hardware acceleration and WebView
         jvmArgs += listOf(
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/java.awt.event=ALL-UNNAMED",
             "--add-opens=java.base/java.lang=ALL-UNNAMED",
-            "-Dprism.order=sw"
+            "-Dprism.order=sw" // Software rendering for maximum Linux compatibility
         )
 
         nativeDistributions {
+            // Only Linux formats
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
-            packageName = "Echo"
+
+            packageName = "EchoChatBot"
             packageVersion = "1.0.0"
 
             linux {
                 shortcut = true
                 appCategory = "Utility"
                 menuGroup = "EchoStudio"
+                debMaintainer = "admin@echo.org"
+                // Ensure icon.png exists in src/jvmMain/resources
+                iconFile.set(project.file("src/jvmMain/resources/icon.png"))
             }
         }
     }

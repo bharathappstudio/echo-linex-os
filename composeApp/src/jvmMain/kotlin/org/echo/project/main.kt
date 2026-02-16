@@ -120,16 +120,37 @@ fun main() = application {
 /* ---------- TITLE BAR ---------- */
 @Composable
 fun TitleBar(windowState: WindowState, theme: ThemePalette, onClose: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth().height(40.dp).background(theme.bg).padding(horizontal = 16.dp)) {
-        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            // Change theme.bg to Transparent or a faded version
+            .background(Color.Transparent)
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color.Red))
                 Spacer(Modifier.width(12.dp))
-                Text("ECHO-APP", style = TextStyle(color = theme.text.copy(0.5f), fontSize = 11.sp, fontFamily = FontFamily.Monospace))
+                Text(
+                    "ECHO-APP",
+                    style = TextStyle(
+                        color = theme.text.copy(0.5f),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                )
             }
             Row {
                 TitleBarButton("—", theme) { windowState.isMinimized = true }
-                TitleBarButton("▢", theme) { windowState.placement = if (windowState.placement == WindowPlacement.Maximized) WindowPlacement.Floating else WindowPlacement.Maximized }
+                TitleBarButton("▢", theme) {
+                    windowState.placement = if (windowState.placement == WindowPlacement.Maximized)
+                        WindowPlacement.Floating else WindowPlacement.Maximized
+                }
                 TitleBarButton("✕", theme, true) { onClose() }
             }
         }
@@ -198,8 +219,6 @@ fun App(theme: ThemePalette) {
 
             "USER_ACTIVITY" -> UserActivityUI(
                 userName = userName,
-                accessToken = googleAccessToken, // Added this
-                authClient = googleAuthClient,    // Added this
                 onBack = { currentScreen = "MAIN" }
             )
         }

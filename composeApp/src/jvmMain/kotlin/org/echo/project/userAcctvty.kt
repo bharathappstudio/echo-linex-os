@@ -2,346 +2,250 @@ package org.echo.project
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.Key.Companion.R
+// REMOVED: import androidx.compose.ui.input.key.Key.Companion.R <--- THIS WAS THE ERROR
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.*
-import kotlinx.coroutines.delay
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import kotlin.random.Random
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin_app_echo.composeapp.generated.resources.Res
+import kotlin_app_echo.composeapp.generated.resources.bb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.jetbrains.compose.resources.painterResource
+import org.json.JSONArray
+import org.json.JSONObject
 
-/* ================= AUTO SYSTEM THEME ================= */
+/* --- API CONFIG --- */
+private const val GEMINI_API_KEY = "AIzaSyChSAUK_AQCJX692iAYF8tdpz08i_L5Lmo"
+private const val MODEL_ID = "gemini-2.5-flash"
+private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_ID:generateContent?key=$GEMINI_API_KEY"
 
-data class NothingColors(
-    val bg: Color,
-    val panel: Color,
-    val card: Color,
-    val accent: Color,
-    val accentSoft: Color,
-    val text: Color,
-    val muted: Color,
-    val border: Color
-)
-
-private val DarkNothing = NothingColors(
-    bg = Color(0xFF000000),
-    panel = Color(0xFF0A0A0A),
-    card = Color(0xFF0F0F0F),
-    accent = Color(0xFF2EFF71),
-    accentSoft = Color(0xFF1B5E3A),
-    text = Color.White,
-    muted = Color(0xFF9E9E9E),
-    border = Color(0xFF1F1F1F)
-)
-
-private val LightNothing = NothingColors(
-    bg = Color(0xFFF4F5F7),
-    panel = Color.White,
-    card = Color(0xFFF0F0F0),
-    accent = Color(0xFF00C853),
-    accentSoft = Color(0xFFB9F6CA),
-    text = Color.Black,
-    muted = Color(0xFF616161),
-    border = Color(0xFFE0E0E0)
-)
+data class ChatMessage(val text: String, val isUser: Boolean)
 
 @Composable
-fun NothingTheme(content: @Composable (NothingColors) -> Unit) {
-    content(if (isSystemInDarkTheme()) DarkNothing else LightNothing)
-}
+fun UserActivityUI(userName: String?, onBack: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val messages = remember { mutableStateListOf<ChatMessage>() }
+    var inputText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
-/* ================= MAIN UI ================= */
+    // Style Palette
+    val textMain = Color(0xFF111827)
+    val textMuted = Color(0xFF6B7280)
+    val borderLight = Color(0xFFE5E7EB)
+    val orangeBrand = Color(0xFFF97316)
 
-@Composable
-fun UserActivityUI(
-    userName: String?,
-    accessToken: String?,
-    authClient: Any?,
-    onBack: () -> Unit
-) {
-    NothingTheme { C ->
-
-        var time by remember { mutableStateOf(LocalDateTime.now()) }
-
-        LaunchedEffect(Unit) {
-            while (true) {
-                time = LocalDateTime.now()
-                delay(1000)
-            }
-        }
-
-        val formatter = remember {
-            DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm:ss", Locale.ENGLISH)
-        }
-
-        Row(
-            Modifier
-                .fillMaxSize()
-                .background(C.bg)
-        ) {
-
-            /* -------- LEFT PANEL -------- */
-            Column(
-                modifier = Modifier
-                    .weight(0.4f)
-                    .fillMaxHeight()
-                    .background(C.panel)
-                    .padding(28.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("NOTHING / ENERGY", fontSize = 11.sp, color = C.muted)
-                        Text(
-                            "Dashboard",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = C.text
-                        )
-                    }
-
-                    Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(C.accent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            userName?.take(1)?.uppercase() ?: "U",
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(32.dp))
-
-                Text(
-                    "Energy\nOverview",
-                    fontSize = 42.sp,
-                    lineHeight = 44.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = C.text
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    time.format(formatter),
-                    fontSize = 12.sp,
-                    color = C.muted
-                )
-
-                Spacer(Modifier.height(32.dp))
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    NothingStat("Earnings", "34.6", "AUD", C)
-                    NothingStat("Savings", "5,137", "km", C)
-                    NothingStat("Energy", "83", "%", C)
-                }
-
-                Spacer(Modifier.height(28.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        NothingCard(
-                            "Current Power",
-                            "4.71 kW",
-                            Modifier.weight(1.3f),
-                            "BAR",
-                            C
-                        )
-                        NothingCard(
-                            "Balance",
-                            "3.41 kW",
-                            Modifier.weight(1f),
-                            "LINE",
-                            C
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        NothingCard("Battery", "300 kW", Modifier.weight(1f), "GAUGE", C)
-                        NothingCard("Savings", "100.1 kW", Modifier.weight(1f), "ARC", C)
-                    }
-                }
-
-                Spacer(Modifier.height(36.dp))
-
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, C.border),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = C.text
-                    )
-                ) {
-                    Text("EXIT SYSTEM", letterSpacing = 1.sp)
-                }
-            }
-
-            /* -------- RIGHT PANEL -------- */
-            Box(
-                modifier = Modifier
-                    .weight(0.6f)
-                    .fillMaxHeight()
-                    .background(C.bg)
-            ) {
-
-                DesktopWebView("https://bharathappstudio.github.io/Echo-Web/")
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(28.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(C.card.copy(0.92f))
-                        .border(1.dp, C.border, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            strokeWidth = 2.dp,
-                            color = C.accent
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "LIVE INTERFACE CONNECTED",
-                            fontSize = 11.sp,
-                            color = C.text,
-                            letterSpacing = 1.5.sp
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/* ================= COMPONENTS ================= */
-
-@Composable
-fun NothingStat(label: String, value: String, unit: String, C: NothingColors) {
-    Column {
-        Text(label, fontSize = 11.sp, color = C.muted)
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                value,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = C.text
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(unit, fontSize = 11.sp, color = C.muted)
-        }
-    }
-}
-
-@Composable
-fun NothingCard(
-    title: String,
-    value: String,
-    modifier: Modifier,
-    type: String,
-    C: NothingColors
-) {
-    Surface(
-        modifier = modifier
-            .height(180.dp)
-            .shadow(4.dp, RoundedCornerShape(22.dp)),
-        shape = RoundedCornerShape(22.dp),
-        color = C.card
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
     ) {
-        Column(Modifier.padding(18.dp)) {
-
-            Text(title, fontSize = 12.sp, color = C.muted)
-            Text(
-                value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = C.text
+        Image(
+            // In Compose Multiplatform, use the generated Res object
+            painter = painterResource(Res.drawable.bb),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            colorFilter = ColorFilter.tint(
+                color = Color.Black.copy(alpha = 0.3f),
+                blendMode = BlendMode.Darken
             )
+        )
 
-            Spacer(Modifier.weight(1f))
+        // Main Content
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            /* TOP NAVIGATION & PROMO */
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = textMain)
+                }
 
-            Box(
+                Surface(
+                    modifier = Modifier.align(Alignment.Center).padding(top = 8.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    color = Color(0xFFFFF7ED).copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, Color(0xFFFFEDD5))
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = orangeBrand, shape = RoundedCornerShape(4.dp)) {
+                            Text("NEW", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text("Nano Banana Pro is 50% off. ", fontSize = 12.sp, color = textMain)
+                        Text("Upgrade →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = orangeBrand)
+                    }
+                }
+            }
+
+            /* HERO HEADER */
+            if (messages.isEmpty()) {
+                Spacer(Modifier.height(60.dp))
+                Text(
+                    text = "Hello, ${userName ?: "Designer"}",
+                    fontSize = 16.sp,
+                    color = orangeBrand,
+                    fontWeight = FontWeight.Medium
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    Text("Design is easier with ", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textMain)
+                    Box(modifier = Modifier.size(32.dp).background(Color.Black, CircleShape), contentAlignment = Alignment.Center) {
+                        Text("L", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    }
+                    Text(" Lovart", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textMain)
+                }
+                Text("The design agent that gets you and gets the job done", color = textMuted, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+            }
+
+            /* CHAT AREA */
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(messages) { msg ->
+                        ChatBubble(msg, textMain, borderLight)
+                    }
+                }
+            }
+
+            /* INPUT BOX */
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
+                    .fillMaxWidth(0.92f)
+                    .padding(bottom = 8.dp)
+                    .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(0.1f)),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, borderLight),
+                color = Color.White.copy(alpha = 0.95f)
             ) {
-                when (type) {
-                    "BAR" -> Row(
-                        Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        repeat(12) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    BasicTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = TextStyle(fontSize = 16.sp, color = textMain),
+                        decorationBox = { innerTextField ->
+                            if (inputText.isEmpty()) Text("Ask Lovart to create...", color = textMuted.copy(0.5f))
+                            innerTextField()
+                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.AttachFile, null, tint = textMuted, modifier = Modifier.size(20.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Lightbulb, null, tint = textMuted, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(16.dp))
+                            Icon(Icons.Outlined.Language, null, tint = textMuted, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(16.dp))
                             Box(
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(Random.nextFloat())
-                                    .background(C.accent, RoundedCornerShape(6.dp))
-                            )
+                                modifier = Modifier.size(32.dp).background(if(inputText.isNotBlank()) Color.Black else borderLight, CircleShape)
+                                    .clickable(enabled = inputText.isNotBlank()) {
+                                        val userTxt = inputText
+                                        messages.add(ChatMessage(userTxt, true))
+                                        inputText = ""
+                                        scope.launch {
+                                            val response = fetchGemini(userTxt)
+                                            messages.add(ChatMessage(response, false))
+                                            listState.animateScrollToItem(messages.size - 1)
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.ArrowUpward, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
-
-                    "GAUGE" -> Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .background(C.accentSoft, CircleShape)
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(0.7f)
-                                .fillMaxHeight()
-                                .background(C.accent, CircleShape)
-                        )
-                    }
-
-                    "ARC" -> Canvas(Modifier.fillMaxSize()) {
-                        drawArc(
-                            color = C.accent,
-                            startAngle = 180f,
-                            sweepAngle = 140f,
-                            useCenter = false,
-                            style = Stroke(width = 8f)
-                        )
-                    }
-
-                    "LINE" -> Canvas(Modifier.fillMaxSize()) {
-                        drawLine(
-                            C.accent,
-                            start = Offset(0f, size.height * 0.7f),
-                            end = Offset(size.width, size.height * 0.3f),
-                            strokeWidth = 6f
-                        )
-                    }
                 }
+            }
+
+            /* TOOL CHIPS */
+            Row(
+                modifier = Modifier.padding(vertical = 20.dp).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Spacer(Modifier.width(20.dp))
+                ToolChip("Nano Banana Pro", Icons.Default.AutoAwesome, true)
+                ToolChip("Design", Icons.Outlined.Image)
+                ToolChip("Branding", Icons.Outlined.StarOutline)
+                ToolChip("Illustration", Icons.Outlined.Brush)
+                ToolChip("Video", Icons.Outlined.PlayCircle)
+                Spacer(Modifier.width(20.dp))
             }
         }
     }
+}
+
+@Composable
+fun ToolChip(label: String, icon: ImageVector, isOrange: Boolean = false) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, if(isOrange) Color(0xFFFDBA74) else Color(0xFFE5E7EB)),
+        color = if(isOrange) Color(0xFFFFF7ED).copy(alpha = 0.95f) else Color.White.copy(alpha = 0.8f)
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = if(isOrange) Color(0xFFF97316) else Color(0xFF6B7280), modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, fontSize = 13.sp, color = if(isOrange) Color(0xFFF97316) else Color(0xFF374151), fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(msg: ChatMessage, textColor: Color, borderColor: Color) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = if(msg.isUser) Alignment.End else Alignment.Start) {
+        Surface(
+            color = if(msg.isUser) Color(0xFFF9FAFB).copy(alpha = 0.95f) else Color.White.copy(alpha = 0.85f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, borderColor)
+        ) {
+            Text(msg.text, modifier = Modifier.padding(12.dp), color = textColor, fontSize = 15.sp)
+        }
+    }
+}
+
+suspend fun fetchGemini(prompt: String): String = withContext(Dispatchers.IO) {
+    val client = OkHttpClient()
+    val json = JSONObject().apply {
+        put("contents", JSONArray().put(JSONObject().apply {
+            put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+        }))
+    }
+    val request = Request.Builder().url(GEMINI_URL).post(json.toString().toRequestBody("application/json".toMediaType())).build()
+    try {
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string() ?: ""
+            JSONObject(body).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+        }
+    } catch (e: Exception) { "AI Error: ${e.localizedMessage}" }
 }
