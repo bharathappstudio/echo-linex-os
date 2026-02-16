@@ -42,7 +42,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /* --- API CONFIG --- */
-private const val GEMINI_API_KEY = "AIzaSyChSAUK_AQCJX692iAYF8tdpz08i_L5Lmo"
+private const val GEMINI_API_KEY = "AIzaSyCDDO5nQPH6oeG-khO8BuFVkkdQkprZ-Kk"
 private const val MODEL_ID = "gemini-2.5-flash"
 private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_ID:generateContent?key=$GEMINI_API_KEY"
 
