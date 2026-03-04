@@ -8,19 +8,20 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin_app_echo.composeapp.generated.resources.Res
@@ -36,10 +37,10 @@ import org.jetbrains.compose.resources.painterResource
 import org.json.JSONArray
 import org.json.JSONObject
 
-/* --- API CONFIG --- */
-private const val GEMINI_API_KEY = "AIzaSyDtpPWzHzoWFQIOF7uHMrX_F2u6GWKc1yQ"
-private const val MODEL_ID = "gemini-2.5-flash"
-private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_ID:generateContent?key=$GEMINI_API_KEY"
+/* --- GITHUB MODELS CONFIG --- */
+private const val GITHUB_TOKEN = "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"
+private const val MODEL_ID = "gpt-4o"
+private const val GITHUB_URL = "https://models.github.ai/inference/chat/completions"
 
 data class ChatMessage(val text: String, val isUser: Boolean)
 
@@ -50,27 +51,33 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // Light Theme Colors
-    val textMain = Color(0xFF1F2937) // Dark Slate Gray
+    // Colors
+    val textMain = Color(0xFF1F2937)
     val textMuted = Color(0xFF6B7280)
     val glassBackground = Color.White.copy(alpha = 0.75f)
-    val accentColor = Color(0xFF3B82F6) // Modern Blue cursor
+    val accentColor = Color(0xFF3B82F6)
 
     val sendMessage = {
         if (inputText.isNotBlank()) {
             val messageToSend = inputText.trim()
             messages.add(ChatMessage(messageToSend, true))
             inputText = ""
+
             scope.launch {
-                val response = fetchGemini(messageToSend)
+                // Auto-scroll to user message
+                listState.animateScrollToItem(messages.size - 1)
+
+                val response = fetchGitHubGPT4(messageToSend)
                 messages.add(ChatMessage(response, false))
+
+                // Auto-scroll to AI response
                 listState.animateScrollToItem(messages.size - 1)
             }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        /* BACKGROUND IMAGE (Kept for glass contrast) */
+        /* BACKGROUND IMAGE */
         Image(
             painter = painterResource(Res.drawable.bb),
             contentDescription = null,
@@ -101,11 +108,11 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                 }
             }
 
-            /* LIGHT GLASS INPUT BAR - 5CM Height Style */
+            /* LIGHT GLASS INPUT BAR */
             Surface(
                 modifier = Modifier
                     .padding(bottom = 32.dp)
-                    .widthIn(min = 1200.dp, max = 550.dp)
+                    .widthIn(min = 400.dp, max = 550.dp)
                     .fillMaxWidth(0.75f)
                     .height(125.dp),
                 shape = RoundedCornerShape(32.dp),
@@ -117,7 +124,6 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxSize().padding(20.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Top Section: Input Text
                     Box(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentAlignment = Alignment.TopStart
@@ -135,18 +141,24 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                             onValueChange = { inputText = it },
                             textStyle = TextStyle(color = textMain, fontSize = 18.sp),
                             cursorBrush = SolidColor(accentColor),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onPreviewKeyEvent {
+                                    // Handle "Enter" key on Desktop
+                                    if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
+                                        sendMessage()
+                                        true
+                                    } else false
+                                }
                         )
                     }
 
-                    // Bottom Section: Light Toolbar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Circular Add Button
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
@@ -160,7 +172,6 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            // Tools Pill Button
                             Row(
                                 modifier = Modifier
                                     .height(38.dp)
@@ -171,23 +182,13 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(Icons.Default.Tune, null, tint = textMain, modifier = Modifier.size(18.dp))
-                                Text(
-                                    "Tools",
-                                    color = textMain,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
+                                Text("Tools", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Fast Dropdown
                             Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { }
-                                    .padding(horizontal = 8.dp),
+                                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { }.padding(horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text("Fast", color = textMuted, fontSize = 14.sp)
@@ -196,14 +197,11 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            // Action Button (Send/Mic)
                             Box(
                                 modifier = Modifier
                                     .size(46.dp)
                                     .clip(CircleShape)
-                                    .background(
-                                        if (inputText.isNotBlank()) textMain else Color.Black.copy(alpha = 0.1f)
-                                    )
+                                    .background(if (inputText.isNotBlank()) textMain else Color.Black.copy(alpha = 0.1f))
                                     .clickable { if (inputText.isNotBlank()) sendMessage() },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -239,18 +237,30 @@ fun ChatBubble(msg: ChatMessage, textColor: Color, borderColor: Color) {
     }
 }
 
-suspend fun fetchGemini(prompt: String): String = withContext(Dispatchers.IO) {
+/* --- API LOGIC --- */
+suspend fun fetchGitHubGPT4(prompt: String): String = withContext(Dispatchers.IO) {
     val client = OkHttpClient()
     val json = JSONObject().apply {
-        put("contents", JSONArray().put(JSONObject().apply {
-            put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+        put("model", MODEL_ID)
+        put("messages", JSONArray().put(JSONObject().apply {
+            put("role", "user")
+            put("content", prompt)
         }))
     }
-    val request = Request.Builder().url(GEMINI_URL).post(json.toString().toRequestBody("application/json".toMediaType())).build()
+
+    val request = Request.Builder()
+        .url(GITHUB_URL)
+        .addHeader("Authorization", "Bearer $GITHUB_TOKEN")
+        .addHeader("Content-Type", "application/json")
+        .post(json.toString().toRequestBody("application/json".toMediaType()))
+        .build()
+
     try {
         client.newCall(request).execute().use { response ->
             val body = response.body?.string() ?: ""
-            JSONObject(body).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+            if (response.isSuccessful) {
+                JSONObject(body).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
+            } else "Error ${response.code}: $body"
         }
     } catch (e: Exception) { "Error: ${e.localizedMessage}" }
 }
