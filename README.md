@@ -21,6 +21,23 @@ in your IDE’s toolbar or run it directly from the terminal:
   ```shell
   .\gradlew.bat :composeApp:run
   ```
+  - on Run Build:
+   ```shell
+  ./gradlew :composeApp:packageDeb
+  ```
+  - Install the output:
+   ```shell
+  sudo dpkg -i composeApp/build/compose/binaries/main/deb/EchoChatBot_1.0.0_amd64.deb
+  ```
+  - Step 1: Find the actual file name
+   ```shell
+  ls composeApp/build/compose/binaries/main/deb/
+  ```
+  - Step 2: Install using a "Wildcard"
+   ```shell
+  sudo dpkg -i composeApp/build/compose/binaries/main/deb/*.deb
+  ```
+
 
 ---
 

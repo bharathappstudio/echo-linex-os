@@ -32,7 +32,7 @@ kotlin {
 
                 /* ---------- JavaFX (Strict Linux Only) ---------- */
                 val javafxVersion = "17.0.10"
-                val targetOs = "linux" // Locked to Linux
+                val targetOs = "linux"
 
                 implementation("org.openjfx:javafx-base:$javafxVersion:$targetOs")
                 implementation("org.openjfx:javafx-graphics:$javafxVersion:$targetOs")
@@ -49,16 +49,14 @@ compose.desktop {
     application {
         mainClass = "org.echo.project.MainKt"
 
-        // Linux-specific JVM arguments for hardware acceleration and WebView
         jvmArgs += listOf(
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/java.awt.event=ALL-UNNAMED",
             "--add-opens=java.base/java.lang=ALL-UNNAMED",
-            "-Dprism.order=sw" // Software rendering for maximum Linux compatibility
+            "-Dprism.order=sw"
         )
 
         nativeDistributions {
-            // Only Linux formats
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
 
             packageName = "EchoChatBot"
@@ -69,8 +67,12 @@ compose.desktop {
                 appCategory = "Utility"
                 menuGroup = "EchoStudio"
                 debMaintainer = "admin@echo.org"
-                // Ensure icon.png exists in src/jvmMain/resources
-                iconFile.set(project.file("src/jvmMain/resources/icon.png"))
+
+                // FIXED: Only try to set the icon if the file actually exists
+                val icon = project.file("src/jvmMain/resources/icon.png")
+                if (icon.exists()) {
+                    iconFile.set(icon)
+                }
             }
         }
     }
