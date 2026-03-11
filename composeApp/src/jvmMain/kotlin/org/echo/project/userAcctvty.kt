@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,7 +20,6 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin_app_echo.composeapp.generated.resources.Res
@@ -36,11 +34,49 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.jetbrains.compose.resources.painterResource
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
-/* --- GITHUB MODELS CONFIG --- */
-private const val GITHUB_TOKEN = "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"
-private const val MODEL_ID = "gpt-4o"
-private const val GITHUB_URL = "https://models.github.ai/inference/chat/completions"
+// ======================================================
+// LOCAL AI CLIENT (LLAMA SERVER)
+// ======================================================
+class LocalAiClient {
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .build()
+
+    suspend fun generate(prompt: String): String = withContext(Dispatchers.IO) {
+        try {
+            val json = JSONObject().apply {
+                put("model", "local-model")
+                put("messages", JSONArray().put(
+                    JSONObject().apply {
+                        put("role", "user")
+                        put("content", prompt)
+                    }
+                ))
+            }
+            val body = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("https://unlifting-postpuerperal-mica.ngrok-free.dev/v1/chat/completions")
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val result = response.body?.string() ?: return@use "No response"
+                val jsonResponse = JSONObject(result)
+                jsonResponse
+                    .getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+            }
+        } catch (e: Exception) {
+            "Error: ${e.localizedMessage}"
+        }
+    }
+}
 
 data class ChatMessage(val text: String, val isUser: Boolean)
 
@@ -51,7 +87,10 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // Colors
+    // Use the Local AI Client instead of direct GitHub fetch
+    val aiClient = remember { LocalAiClient() }
+
+    // Colors (Your Original Palette)
     val textMain = Color(0xFF1F2937)
     val textMuted = Color(0xFF6B7280)
     val glassBackground = Color.White.copy(alpha = 0.75f)
@@ -64,13 +103,12 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
             inputText = ""
 
             scope.launch {
-                // Auto-scroll to user message
                 listState.animateScrollToItem(messages.size - 1)
 
-                val response = fetchGitHubGPT4(messageToSend)
-                messages.add(ChatMessage(response, false))
+                // Fetch from Local Llama Server
+                val response = aiClient.generate(messageToSend)
 
-                // Auto-scroll to AI response
+                messages.add(ChatMessage(response, false))
                 listState.animateScrollToItem(messages.size - 1)
             }
         }
@@ -104,11 +142,13 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                     contentPadding = PaddingValues(bottom = 180.dp, start = 20.dp, end = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(messages) { msg -> ChatBubble(msg, textMain, Color(0xFFE5E7EB)) }
+                    items(messages) { msg ->
+                        ChatBubble(msg, textMain, Color(0xFFE5E7EB))
+                    }
                 }
             }
 
-            /* LIGHT GLASS INPUT BAR */
+            /* LIGHT GLASS INPUT BAR (Original Style) */
             Surface(
                 modifier = Modifier
                     .padding(bottom = 32.dp)
@@ -144,7 +184,6 @@ fun UserActivityUI(userName: String?, onBack: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onPreviewKeyEvent {
-                                    // Handle "Enter" key on Desktop
                                     if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
                                         sendMessage()
                                         true
@@ -235,32 +274,4 @@ fun ChatBubble(msg: ChatMessage, textColor: Color, borderColor: Color) {
             Text(msg.text, modifier = Modifier.padding(12.dp), color = textColor, fontSize = 15.sp)
         }
     }
-}
-
-/* --- API LOGIC --- */
-suspend fun fetchGitHubGPT4(prompt: String): String = withContext(Dispatchers.IO) {
-    val client = OkHttpClient()
-    val json = JSONObject().apply {
-        put("model", MODEL_ID)
-        put("messages", JSONArray().put(JSONObject().apply {
-            put("role", "user")
-            put("content", prompt)
-        }))
-    }
-
-    val request = Request.Builder()
-        .url(GITHUB_URL)
-        .addHeader("Authorization", "Bearer $GITHUB_TOKEN")
-        .addHeader("Content-Type", "application/json")
-        .post(json.toString().toRequestBody("application/json".toMediaType()))
-        .build()
-
-    try {
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string() ?: ""
-            if (response.isSuccessful) {
-                JSONObject(body).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
-            } else "Error ${response.code}: $body"
-        }
-    } catch (e: Exception) { "Error: ${e.localizedMessage}" }
 }
