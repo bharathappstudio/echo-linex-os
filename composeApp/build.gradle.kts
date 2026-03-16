@@ -57,10 +57,26 @@ compose.desktop {
         )
 
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm)
+            // FIXED: Removed .Rpm to avoid Ubuntu build errors
+            targetFormats(TargetFormat.Deb)
 
             packageName = "EchoChatBot"
             packageVersion = "1.0.0"
+
+            // 1. FIX: Disable ProGuard to stop the build errors
+            buildTypes.release.proguard {
+                isEnabled.set(false)
+            }
+
+            // 2. FIX: Added jdk.crypto.ec for HTTPS/Networking support
+            modules(
+                "java.instrument",
+                "jdk.unsupported",
+                "java.naming",
+                "java.sql",
+                "java.xml",
+                "jdk.crypto.ec"
+            )
 
             linux {
                 shortcut = true
@@ -68,7 +84,6 @@ compose.desktop {
                 menuGroup = "EchoStudio"
                 debMaintainer = "admin@echo.org"
 
-                // FIXED: Only try to set the icon if the file actually exists
                 val icon = project.file("src/jvmMain/resources/icon.png")
                 if (icon.exists()) {
                     iconFile.set(icon)
