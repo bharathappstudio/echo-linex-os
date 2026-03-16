@@ -17,26 +17,25 @@ in your IDE’s toolbar or run it directly from the terminal:
   ```shell
   ./gradlew :composeApp:run
   ```
-- on Windows
+  Locate jpackage and run it directly
   ```shell
-  .\gradlew.bat :composeApp:run
+  /usr/lib/jvm/java-17-openjdk-amd64/bin/jpackage \
+  --input ~/Desktop/EchoBuild \
+  --main-jar EchoChatBot-linux-x64-1.0.0.jar \
+  --main-class org.echo.project.MainKt \
+  --type deb \
+  --name echochatbot \
+  --app-version 1.0.0 \
+  --vendor "EchoStudio" \
+  --linux-shortcut \
+  --linux-menu-group "Utility" \
+  --dest ~/Desktop/EchoBuild/output
   ```
-  - on Run Build:
-   ```shell
-  ./gradlew :composeApp:packageDeb
+  on macOS/Linux
+  ```shell
+  sudo dpkg -i ~/Desktop/EchoBuild/output/echochatbot_1.0.0-1_amd64.deb
   ```
-  - Install the output:
-   ```shell
-  sudo dpkg -i composeApp/build/compose/binaries/main/deb/EchoChatBot_1.0.0_amd64.deb
-  ```
-  - Step 1: Find the actual file name
-   ```shell
-  ls composeApp/build/compose/binaries/main/deb/
-  ```
-  - Step 2: Install using a "Wildcard"
-   ```shell
-  sudo dpkg -i composeApp/build/compose/binaries/main/deb/*.deb
-  ```
+
 
 
 ---
