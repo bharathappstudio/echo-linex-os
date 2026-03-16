@@ -17,6 +17,10 @@ in your IDE’s toolbar or run it directly from the terminal:
   ```shell
   ./gradlew :composeApp:run
   ```
+Rebuild the JAR
+  ```shell
+  ./gradlew :composeApp:packageUberJar
+  ```
   Locate jpackage and run it directly
   ```shell
   /usr/lib/jvm/java-17-openjdk-amd64/bin/jpackage \
